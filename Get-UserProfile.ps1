@@ -130,19 +130,22 @@ class UserProfile {
         }
 
         if ($this.IsLoaded) {
-            throw "Loaded profiles cannot be deleted."
+            throw 'Loaded profiles cannot be deleted.'
         }
 
         # https://learn.microsoft.com/en-us/previous-versions/windows/desktop/userprofileprov/win32-userprofile
         ## "Whether the user profile is owned by a special system service. True if the user profile is owned by a system service; otherwise false."
         if ($this.IsSpecial) {
-            throw "Special profiles cannot be deleted."
+            throw 'Special profiles cannot be deleted.'
         }
 
-
-        #TODO: Validate the the CIM instance still exists
-        ## Verify that calling `Get-CimInstance -InputObject $this._userProfile` returns nothing or errors out when the profile has already been deleted
-        ## This will also ensure that an error isn't generated when trying to use the Delete() method on an instance that was instantiated using the new() method rather than one of its overloads.
+        # Validate the the CIM instance still exists before attempting to delete it.
+        try {
+            $null = Get-CimInstance -InputObject $this._userProfile -ErrorAction Stop
+        } catch <# [ObjectNotFoundException] #> {
+            $this._isDeleted = $true
+            return
+        }
 
         try {
             Remove-CimInstance -InputObject $this._userProfile -ErrorAction Stop
@@ -160,7 +163,7 @@ class UserProfile {
 
     # Return the SID since it can be used to recreate the object and it should be the most uniquely identifiable.
     [String] ToString() {
-        return ($this.Sid.Value)
+        return $this.Sid.Value
         #return "$($this.Username.Value);$($this.Sid.Value)"
         #return "$($this.Username.Value);$($this.Sid.Value);$($this.ProfilePath)"
     }

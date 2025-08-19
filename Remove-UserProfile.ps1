@@ -60,7 +60,7 @@ function Remove-UserProfile {
             #TODO: Fix error handling to allow `Clean-UserProfile` to work.
             ## Ideally, that function could call this one and perform its own logic in the event that this one throws an error.
             try {
-                $profile.Delete()
+                $userProfile.Delete()
             } catch {
                 $PSCmdlet.WriteError($_)
             }
