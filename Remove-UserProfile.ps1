@@ -6,6 +6,12 @@
     Instead, it deletes the "profile" from the system, cleaning up disk space.
     If the account is created locally, it will stil exist and be allowed to log in but all of their files and registry settings will be deleted.
     If the account is an AD account, the account will not be deleted from AD. It will still exist in AD but their local profile will be deleted.
+.EXAMPLE
+    Delete the user profile for the user mhollingsworth.
+    Remove-UserProfile -Username mhollingsworth
+.EXAMPLE
+    Delete the user profiles for users that haven't signed in in the past 90 days.
+    Get-UserProfile | Where-Object { $_.LastUseTime -lt [DateTime]::Now.AddDays(-90) } | Remove-UserProfile -Force
 .NOTES
     Author: Michael Hollingsworth
 .LINK
