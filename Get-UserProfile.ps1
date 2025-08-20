@@ -23,9 +23,11 @@ class UserProfile {
     [DateTime]$LastUseTime
     [UserProfileStatus]$Status
     [Boolean]$IsLoaded
+    [Boolean]$IsLocal
     [Boolean]$IsSpecial
     hidden [Microsoft.Management.Infrastructure.CimInstance]$_userProfile
-    hidden [Boolean]$_isDeleted = $false
+    hidden [Boolean]$_isDeleted
+    static hidden [System.Security.Principal.SecurityIdentifier]$_localComputerDomainSid = ([System.Security.Principal.SecurityIdentifier]((Get-CimInstance -Query "SELECT SID FROM Win32_UserAccount WHERE LocalAccount='TRUE'")[0].SID)).AccountDomainSid
 
     UserProfile() {
         $this.Username = $null
@@ -36,6 +38,7 @@ class UserProfile {
         # idk if this property even works anymore or if its just more legacy junk left in WMI.
         $this.Status = 0
         $this.IsLoaded = $false
+        $this.IsLocal = $false
         $this.IsSpecial = $false
         $this._userProfile = $null
         $this._isDeleted = $false
@@ -96,9 +99,10 @@ class UserProfile {
         $this.Username = $this.Sid.Translate([System.Security.Principal.NTAccount]).Value
         $this.ProfilePath = $UserProfile.LocalPath
         $this.ProfileSize = -1
-        $this.LastUseTime = $UserProfile.LastUseTime
+        $this.LastUseTime = if ($null -ne $UserProfile.LastUseTime) { $UserProfile.LastUseTime } else { [DateTime]::MinValue }
         $this.Status = [UserProfileStatus]$UserProfile.Status
         $this.IsLoaded = $UserProfile.Loaded
+        $this.IsLocal = (($null -eq $this.Sid.AccountDomainSid) -or ($this.Sid.AccountDomainSid -eq [UserProfile]::_localComputerDomainSid))
         $this.IsSpecial = $UserProfile.Special
         $this._userProfile = $UserProfile
         $this._isDeleted = $false
@@ -202,6 +206,7 @@ function Get-UserProfile {
         #[String[]]$ComputerName,
         [Switch]$ExcludeLodedProfiles,
         [Switch]$ExcludeSpecialProfiles,
+        [Switch]$ExcludeLocalProfiles,
         [Switch]$CalculateProfileSize
     )
 
@@ -260,6 +265,10 @@ function Get-UserProfile {
 
     if ($ExcludeSpecialProfiles) {
         [Microsoft.Management.Infrastructure.CimInstance[]]$cim = $cim | Where-Object { $_.IsSpecial -ne $true }
+    }
+
+    if ($ExcludeLocalProfiles) {
+        [Microsoft.Management.Infrastructure.CimInstance[]]$cim = $cim | Where-Object { $_.IsLocal -ne $true }
     }
 
     foreach ($instance in $cim) {

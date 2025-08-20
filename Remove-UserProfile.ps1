@@ -28,6 +28,7 @@ function Remove-UserProfile {
         [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0, ParameterSetName = 'InputObject')]
         [ValidateNotNullOrEmpty()]
         [UserProfile[]]$InputObject,
+        [Switch]$ExcludeLocalProfiles,
         [Switch]$PassThru,
         [Switch]$Force
     )
@@ -46,7 +47,7 @@ function Remove-UserProfile {
             $splat.Remove('Force')
         }
 
-        [UserProfile[]]$InputObject = Get-UserProfile @splat -ExcludeLoadedProfiles -ExcludeSpecialProfiles
+        [UserProfile[]]$InputObject = Get-UserProfile @splat -ExcludeLoadedProfiles -ExcludeSpecialProfiles -ExcludeLocalProfiles:(!!$ExcludeLocalProfiles)
     }
 
     foreach ($userProfile in $InputObject) {
