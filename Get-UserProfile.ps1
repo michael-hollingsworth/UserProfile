@@ -25,6 +25,7 @@ class UserProfile {
     [Boolean]$IsLoaded
     [Boolean]$IsLocal
     [Boolean]$IsSpecial
+    [String]$ComputerName
     hidden [Microsoft.Management.Infrastructure.CimInstance]$_userProfile
     hidden [Boolean]$_isDeleted
     static hidden [System.Security.Principal.SecurityIdentifier]$_localComputerDomainSid = ([System.Security.Principal.SecurityIdentifier]((Get-CimInstance -Query "SELECT SID FROM Win32_UserAccount WHERE LocalAccount='TRUE'")[0].SID)).AccountDomainSid
@@ -40,6 +41,7 @@ class UserProfile {
         $this.IsLoaded = $false
         $this.IsLocal = $false
         $this.IsSpecial = $false
+        $this.ComputerName = $null
         $this._userProfile = $null
         $this._isDeleted = $false
     }
@@ -104,6 +106,7 @@ class UserProfile {
         $this.IsLoaded = $UserProfile.Loaded
         $this.IsLocal = (($null -eq $this.Sid.AccountDomainSid) -or ($this.Sid.AccountDomainSid -eq [UserProfile]::_localComputerDomainSid))
         $this.IsSpecial = $UserProfile.Special
+        $this.ComputerName = $userProfile.PSComputerName
         $this._userProfile = $UserProfile
         $this._isDeleted = $false
 
@@ -174,6 +177,14 @@ class UserProfile {
 
     static [UserProfile[]] GetUserProfiles() {
         [Microsoft.Management.Infrastructure.CimInstance[]]$profs = Get-CimInstance -ClassName Win32_UserProfile
+
+        return $(foreach ($prof in $profs) {
+            [UserProfile]::new($prof)
+        })
+    }
+
+    static [UserProfile[]] GetUserProfiles([String]$ComputerName) {
+        [Microsoft.Management.Infrastructure.CimInstance[]]$profs = Get-CimInstance -ClassName Win32_UserProfile -ComputerName $ComputerName
 
         return $(foreach ($prof in $profs) {
             [UserProfile]::new($prof)
