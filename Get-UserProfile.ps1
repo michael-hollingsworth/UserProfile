@@ -35,7 +35,7 @@ class UserProfile {
         $this.Sid = $null
         $this.ProfilePath = $null
         $this.ProfileSize = -1
-        $this.LastUseTime = [DateTime]::new(0)
+        $this.LastUseTime = [DateTime]::MinValue
         # idk if this property even works anymore or if its just more legacy junk left in WMI.
         $this.Status = 0
         $this.IsLoaded = $false
