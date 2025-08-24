@@ -43,7 +43,7 @@ class UserProfile {
         $this.IsSpecial = $false
         $this.ComputerName = $null
         $this._userProfile = $null
-        $this._isDeleted = $false
+        $this._isDeleted = $true
     }
 
     UserProfile([System.Security.Principal.NTAccount]$Username) {
@@ -144,7 +144,7 @@ class UserProfile {
 
     [Void] Delete() {
         # While not 100% accurate, this is faster than running Get-CimInstance every time.
-        if ($this._isDeleted) {
+        if ($this._isDeleted -or ($null -eq $this._userProfile)) {
             return
         }
 
