@@ -47,17 +47,21 @@ class UserProfile {
     }
 
     UserProfile([System.Security.Principal.NTAccount]$Username) {
-        try {
-            [System.Security.Principal.SecurityIdentifier]$tmpSid = $Username.Translate([System.Security.Principal.SecurityIdentifier])
-        } catch {
-            throw $(
-                [Exception]::new("The username [$Username] could not be translated to an SID.", $_)
-            )
-        }
-        $this.Init($tmpSid)
+        $this.Init($Username, $null, $false)
     }
 
     UserProfile([System.Security.Principal.NTAccount]$Username, [Boolean]$CalculateProfileSize) {
+        $this.Init($Username, $null, $CalculateProfileSize)
+    }
+
+    UserProfile([System.Security.Principal.NTAccount]$Username, [String]$ComputerName) {
+        $this.Init($Username, $ComputerName, $false)
+    }
+
+    UserProfile([System.Security.Principal.NTAccount]$Username, [String]$ComputerName, [Boolean]$CalculateProfileSize) {
+        $this.Init($Username, $ComputerName, $CalculateProfileSize)
+    }
+    hidden Init([System.Security.Principal.NTAccount]$Username, [String]$ComputerName, [Boolean]$CalculateProfileSize) {
         try {
             [System.Security.Principal.SecurityIdentifier]$tmpSid = $Username.Translate([System.Security.Principal.SecurityIdentifier])
         } catch {
@@ -65,27 +69,39 @@ class UserProfile {
                 [Exception]::new("The username [$Username] could not be translated to an SID.", $_)
             )
         }
-        $this.Init($tmpSid, $CalculateProfileSize)
+        $this.Init($tmpSid, $ComputerName, $CalculateProfileSize)
     }
 
     UserProfile([System.Security.Principal.SecurityIdentifier]$Sid) {
-        $this.Init($Sid)
-    }
-    hidden Init([System.Security.Principal.SecurityIdentifier]$Sid) {
-        $this.Init((Get-CimInstance -ClassName Win32_UserProfile -Filter "SID = `"$($Sid.Value)`""))
+        $this.Init($Sid, $null, $false)
     }
 
     UserProfile([System.Security.Principal.SecurityIdentifier]$Sid, [Boolean]$CalculateProfileSize) {
-        $this.Init($Sid, $CalculateProfileSize)
+        $this.Init($Sid, $null, $CalculateProfileSize)
     }
-    hidden Init([System.Security.Principal.SecurityIdentifier]$Sid, [Boolean]$CalculateProfileSize) {
-        $this.Init((Get-CimInstance -ClassName Win32_UserProfile -Filter "SID = `"$($Sid.Value)`""), $CalculateProfileSize)
+
+    UserProfile([System.Security.Principal.SecurityIdentifier]$Sid, [String]$ComputerName) {
+        $this.Init($Sid, $ComputerName, $false)
+    }
+
+    UserProfile([System.Security.Principal.SecurityIdentifier]$Sid, [String]$ComputerName, [Boolean]$CalculateProfileSize) {
+        $this.Init($Sid, $ComputerName, $CalculateProfileSize)
+    }
+    hidden Init([System.Security.Principal.SecurityIdentifier]$Sid, [String]$ComputerName, [Boolean]$CalculateProfileSize) {
+        [Microsoft.Management.Infrastructure.CimInstance]$userProfile = if ([String]::IsNullOrWhiteSpace($ComputerName) -or ($ComputerName -in ($env:ComputerName, '.'))) {
+            Get-CimInstance -ClassName Win32_UserProfile -Filter "SID = `"$($Sid.Value)`"" -ErrorAction Stop
+        } else {
+            Get-CimInstance -ClassName Win32_UserProfile -Filter "SID = `"$($Sid.Value)`"" -ComputerName $ComputerName -ErrorAction Stop
+        }
+
+        if ($null -eq $userProfile) {
+            return
+        }
+
+        $this.Init($userProfile, $CalculateProfileSize)
     }
 
     UserProfile([Microsoft.Management.Infrastructure.CimInstance]$UserProfile) {
-        $this.Init($UserProfile)
-    }
-    hidden Init([Microsoft.Management.Infrastructure.CimInstance]$UserProfile) {
         $this.Init($UserProfile, $false)
     }
 
@@ -100,7 +116,7 @@ class UserProfile {
         $this.Sid = $UserProfile.SID
         $this.Username = $this.Sid.Translate([System.Security.Principal.NTAccount]).Value
         $this.ProfilePath = $UserProfile.LocalPath
-        $this.ProfileSize = -1
+        $this.ProfileSize = if ([String]::IsNullOrWhiteSpace($this.ProfilePath) -or (-not (Test-Path -LiteralPath $this.ProfilePath -ErrorAction Ignore))) { 0 } else { -1 }
         $this.LastUseTime = if ($null -ne $UserProfile.LastUseTime) { $UserProfile.LastUseTime } else { [DateTime]::MinValue }
         $this.Status = [UserProfileStatus]$UserProfile.Status
         $this.IsLoaded = $UserProfile.Loaded
@@ -116,11 +132,7 @@ class UserProfile {
     }
 
     [Void] CalculateProfileSize() {
-        if ([String]::IsNullOrWhiteSpace($this.ProfilePath)) {
-            return
-        }
-
-        if (-not (Test-Path -LiteralPath $this.ProfilePath)) {
+        if ([String]::IsNullOrWhiteSpace($this.ProfilePath) -or (-not (Test-Path -LiteralPath $this.ProfilePath -ErrorAction Ignore))) {
             $this.ProfileSize = 0
             return
         }
@@ -176,18 +188,26 @@ class UserProfile {
     }
 
     static [UserProfile[]] GetUserProfiles() {
-        [Microsoft.Management.Infrastructure.CimInstance[]]$profs = Get-CimInstance -ClassName Win32_UserProfile
+        return ([UserProfile]::GetUserProfiles($null, $false))
+    }
 
-        return $(foreach ($prof in $profs) {
-            [UserProfile]::new($prof)
-        })
+    static [UserProfile[]] GetUserProfiles([Boolean]$CalculateProfileSize) {
+        return ([UserProfile]::GetUserProfiles($null, $CalculateProfileSize))
     }
 
     static [UserProfile[]] GetUserProfiles([String]$ComputerName) {
-        [Microsoft.Management.Infrastructure.CimInstance[]]$profs = Get-CimInstance -ClassName Win32_UserProfile -ComputerName $ComputerName
+        return ([UserProfile]::GetUserProfiles($ComputerName, $false))
+    }
+
+    static [UserProfile[]] GetUserProfiles([String]$ComputerName, [Boolean]$CalculateProfileSize) {
+        [Microsoft.Management.Infrastructure.CimInstance[]]$profs = if ([String]::IsNullOrWhiteSpace($ComputerName) -or ($ComputerName -in ($env:ComputerName, '.'))) {
+            Get-CimInstance -ClassName Win32_UserProfile -ErrorAction Stop
+        } else {
+            Get-CimInstance -ClassName Win32_UserProfile -ComputerName $ComputerName -ErrorAction Stop
+        }
 
         return $(foreach ($prof in $profs) {
-            [UserProfile]::new($prof)
+            [UserProfile]::new($prof, $CalculateProfileSize)
         })
     }
 }
