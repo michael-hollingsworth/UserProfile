@@ -234,28 +234,47 @@ function Get-UserProfile {
         [System.Security.Principal.NTAccount[]]$Username,
         [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'Sid')]
         [System.Security.Principal.SecurityIdentifier[]]$Sid,
-        #[String[]]$ComputerName,
+        [Parameter()]
+        [ValidateNotNullOrEmpty()]
+        [String[]]$ComputerName,
+        [Parameter(ParameterSetName = 'Filter')]
         [Switch]$ExcludeLodedProfiles,
-        [Switch]$ExcludeSpecialProfiles,
+        [Parameter(ParameterSetName = 'Filter')]
         [Switch]$ExcludeLocalProfiles,
+        [Parameter(ParameterSetName = 'Filter')]
+        [Switch]$ExcludeSpecialProfiles,
         [Switch]$CalculateProfileSize
     )
 
-    #TODO: add support for retrieving profiles from remote computers.
+    begin {
+        if ($null -ne $Username) {
+            $identity = $Username
+        } elseif ($null -ne $Sid) {
+            $identity = $Sid
+        }
 
-    if ($PSCmdlet.ParameterSetName -eq 'Name') {
-        if ($null -eq $UserName) {
-            [UserProfile[]]$profs = [UserProfile]::GetUserProfiles()
-            if ($ExcludeLodedProfiles) {
-                [UserProfile[]]$profs = $profs | Where-Object { $_.IsLoaded -ne $true }
+        if ($null -eq $ComputerName) {
+            [String[]]$ComputerName = @('.')
+        }
+    } process {
+        [UserProfile[]]$userProfiles = foreach ($computer in $ComputerName) {
+            if ($null -ne $identity) {
+                foreach ($id in $identity) {
+                    [UserProfile]::new($id, $computer)
+                }
+            } else {
+                [UserProfile]::GetUserProfiles($computer)
             }
+        }
 
-            if ($ExcludeSpecialProfiles) {
-                [UserProfile[]]$profs = $profs | Where-Object { $_.IsSpecial -ne $true }
-            }
+        if ($null -eq $userProfiles) {
+            return
+        }
 
+        if ($PSCmdlet.ParameterSetName -ne 'Filter') {
+            # Calculate profile size for each profile separately so we can send an object through the pipeline while waiting on the next one to process.
             if ($CalculateProfileSize) {
-                foreach ($prof in $profs) {
+                foreach ($prof in $userProfiles) {
                     $prof.CalculateProfileSize()
                     $PSCmdlet.WriteObject($prof)
                 }
@@ -263,46 +282,30 @@ function Get-UserProfile {
                 return
             }
 
-            $PSCmdlet.WriteObject($profs)
+            $PSCmdlet.WriteObject($userProfiles)
             return
         }
 
-        [String[]]$where = foreach ($name in $UserName) {
-            #TODO: Validate that this is faster than calling the UserProfile constructor for each individual username/SID
-            ## I would prefer to rely on the constructors for everything but I'm concerned that performing multiple WMI queries is WAY slower than using a single query
-            [System.Security.Principal.NTAccount]$nt = [System.Security.Principal.NTAccount]::new($name)
-            try {
-                [System.Security.Principal.SecurityIdentifier]$sid = $nt.Translate([System.Security.Principal.SecurityIdentifier])
-            } catch {
+        foreach ($prof in $userProfiles) {
+            if ($prof.IsLoaded -and $ExcludeLodedProfiles) {
+                $PSCmdlet.WriteVerbose("Skipping user profile [$($prof.Username)] because it is loaded.")
                 continue
             }
 
-            "SID = `"$($sid.Value)`""
+            if ($prof.IsSpecial -and $ExcludeSpecialProfiles) {
+                $PSCmdlet.WriteVerbose("Skipping user profile [$($prof.Username)] because it is a special profile.")
+                continue
+            }
+
+            if ($prof.IsLocal -and $ExcludeLocalProfiles) {
+                $PSCmdlet.WriteVerbose("Skipping user profile [$($prof.Username)] because it is a local profile.")
+                continue
+            }
+
+            if ($CalculateProfileSize) {
+                $prof.CalculateProfileSize()
+            }
+            $PSCmdlet.WriteObject($prof)
         }
-        [String]$filter = $where -join ' OR '
-    } elseif ($PSCmdlet.ParameterSetName -eq 'Sid') {
-        [String]$filter = $(foreach ($id in $Sid) { "SID = `"$($id.Value)`"" }) -join ' OR '
-    }
-
-    if ([String]::IsNullOrWhiteSpace($filter)) {
-        return
-    }
-
-    [Microsoft.Management.Infrastructure.CimInstance[]]$cim = Get-CimInstance -ClassName Win32_UserProfile -Filter $filter -ErrorAction Stop
-
-    if ($ExcludeLodedProfiles) {
-        [Microsoft.Management.Infrastructure.CimInstance[]]$cim = $cim | Where-Object { $_.IsLoaded -ne $true }
-    }
-
-    if ($ExcludeSpecialProfiles) {
-        [Microsoft.Management.Infrastructure.CimInstance[]]$cim = $cim | Where-Object { $_.IsSpecial -ne $true }
-    }
-
-    if ($ExcludeLocalProfiles) {
-        [Microsoft.Management.Infrastructure.CimInstance[]]$cim = $cim | Where-Object { $_.IsLocal -ne $true }
-    }
-
-    foreach ($instance in $cim) {
-        [UserProfile]::new($instance, (!!$CalculateProfileSize))
     }
 }
