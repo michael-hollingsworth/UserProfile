@@ -28,8 +28,7 @@ function Remove-UserProfile {
         [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0, ParameterSetName = 'InputObject')]
         [ValidateNotNullOrEmpty()]
         [UserProfile[]]$InputObject,
-        [Parameter(ParameterSetName = 'Name')]
-        [Parameter(ParameterSetName = 'Sid')]
+        [Parameter(ParameterSetName = 'Filter')]
         [Switch]$ExcludeLocalProfiles,
         [Switch]$PassThru,
         [Switch]$Force
@@ -40,7 +39,7 @@ function Remove-UserProfile {
         $ConfirmPreference = 'None'
     }
 
-    if ($PSCmdlet.ParameterSetName -ne 'InputObject') {
+    if (($null -ne $Username) -and ($null -ne $Sid)) {
         # Pass filter parameters to Get-UserProfile
         [HashTable]$splat = $PSBoundParameters
         if ($splat.ContainsKey('PassThru')) {
@@ -50,7 +49,9 @@ function Remove-UserProfile {
             $splat.Remove('Force')
         }
 
-        [UserProfile[]]$InputObject = Get-UserProfile @splat -ExcludeLoadedProfiles -ExcludeSpecialProfiles
+        [UserProfile[]]$InputObject = Get-UserProfile @splat
+    } elseif ($PSCmdlet.ParameterSetName -ne 'InputObject') {
+        [UserProfile[]]$InputObject = Get-UserProfile -ExcludeLoadedProfiles -ExcludeSpecialprofiles -ExcludeLocalProfiles:(!!$ExcludeLocalProfiles)
     }
 
     foreach ($userProfile in $InputObject) {
