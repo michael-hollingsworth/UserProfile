@@ -24,7 +24,7 @@ function Get-UserProfile {
         [ValidateNotNullOrEmpty()]
         [String[]]$ComputerName,
         [Parameter(ParameterSetName = 'Filter')]
-        [Switch]$ExcludeLodedProfiles,
+        [Switch]$ExcludeLoadedProfiles,
         [Parameter(ParameterSetName = 'Filter')]
         [Switch]$ExcludeLocalProfiles,
         [Parameter(ParameterSetName = 'Filter')]
@@ -73,7 +73,7 @@ function Get-UserProfile {
         }
 
         foreach ($prof in $userProfiles) {
-            if ($prof.IsLoaded -and $ExcludeLodedProfiles) {
+            if ($prof.IsLoaded -and $ExcludeLoadedProfiles) {
                 $PSCmdlet.WriteVerbose("Skipping user profile [$($prof.Username)] because it is loaded.")
                 continue
             }
