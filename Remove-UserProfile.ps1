@@ -75,8 +75,9 @@ function Remove-UserProfile {
             } catch {
                 $PSCmdlet.WriteError($_)
             }
+
             if ($PassThru) {
-                $PSCmdlet.WriteObject($profile)
+                $PSCmdlet.WriteObject($userProfile)
             }
         }
     }
