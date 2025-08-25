@@ -46,7 +46,7 @@ function Remove-InactiveUserProfile {
         }
 
         # Write the object to to the console so the user can determine if they want to delete it or not based on other properties.
-        Write-Host -Object $userProfile
+        Out-String -InputObject $userProfile
         if ($PSCmdlet.ShouldProcess($userProfile.Username)) {
             try {
                 $userProfile.Delete()
