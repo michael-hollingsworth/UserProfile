@@ -108,7 +108,15 @@ class UserProfile {
         }
 
         $this.Sid = $UserProfile.SID
-        $this.Username = ConvertTo-NTAccount -Sid $this.Sid
+        $this.Username = try {
+            ConvertTo-NTAccount -Sid $this.Sid
+        } catch {
+            # Fall back to using the profile path to determine username
+            if ([String]::IsNullOrWhiteSpace($UserProfile.LocalPath)) {
+                throw
+            }
+            $UserProfile.LocalPath.Split('\')[-1]
+        }
         $this.ProfilePath = $UserProfile.LocalPath
         $this.ProfileSize = if ([String]::IsNullOrWhiteSpace($this.ProfilePath) -or (-not (Test-Path -LiteralPath $this.ProfilePath -ErrorAction Ignore))) { 0 } else { -1 }
         $this.LastUseTime = if ($null -ne $UserProfile.LastUseTime) { $UserProfile.LastUseTime } else { [DateTime]::MinValue }
