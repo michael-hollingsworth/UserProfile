@@ -20,6 +20,7 @@ class UserProfile {
     [System.Security.Principal.SecurityIdentifier]$Sid
     [String]$ProfilePath
     [Int64]$ProfileSize
+    [Decimal]$ProfileSizeMB
     [DateTime]$LastUseTime
     [UserProfileStatus]$Status
     [Boolean]$IsLoaded
@@ -35,6 +36,7 @@ class UserProfile {
         $this.Sid = $null
         $this.ProfilePath = $null
         $this.ProfileSize = -1
+        $this.ProfileSizeMB = [Decimal]::MinusOne
         $this.LastUseTime = [DateTime]::MinValue
         # idk if this property even works anymore or if its just more legacy junk left in WMI.
         $this.Status = 0
@@ -119,6 +121,7 @@ class UserProfile {
         }
         $this.ProfilePath = $UserProfile.LocalPath
         $this.ProfileSize = if ([String]::IsNullOrWhiteSpace($this.ProfilePath) -or (-not (Test-Path -LiteralPath $this.ProfilePath -ErrorAction Ignore))) { 0 } else { -1 }
+        $this.ProfileSizeMB = if ($this.ProfileSize -eq 0) { [Decimal]::Zero } else { [Decimal]::MinusOne }
         $this.LastUseTime = if ($null -ne $UserProfile.LastUseTime) { $UserProfile.LastUseTime } else { [DateTime]::MinValue }
         $this.Status = [UserProfileStatus]$UserProfile.Status
         $this.IsLoaded = $UserProfile.Loaded
@@ -136,11 +139,13 @@ class UserProfile {
     [Void] CalculateProfileSize() {
         if ([String]::IsNullOrWhiteSpace($this.ProfilePath) -or (-not (Test-Path -LiteralPath $this.ProfilePath -ErrorAction Ignore))) {
             $this.ProfileSize = 0
+            $this.ProfileSizeMB = [Decimal]::Zero
             return
         }
 
         #TODO: improve the speed of this using C#/PInvoke
         $this.ProfileSize = (Get-ChildItem -LiteralPath $this.ProfilePath -Recurse -Force -ErrorAction Ignore | Measure-Object -Property Length -Sum).Sum
+        $this.ProfileSizeMB = [Math]::Round(($this.ProfileSize / 1MB), 2)
         return
     }
 
@@ -163,9 +168,15 @@ class UserProfile {
         # Validate the the CIM instance still exists before attempting to delete it.
         try {
             $null = Get-CimInstance -InputObject $this._userProfile -ErrorAction Stop
-        } catch <# [ObjectNotFoundException] #> {
-            $this._isDeleted = $true
-            return
+        } catch [Microsoft.Management.Infrastructure.CimException] {
+            if ($_.CateogryInfo.Cateogry -eq [System.Management.Automation.ErrorCategory]::ObjectNotFound) {
+                $this._isDeleted = $true
+                return
+            }
+
+            throw $_
+        } catch {
+            throw $_
         }
 
         try {
