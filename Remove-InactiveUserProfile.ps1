@@ -5,14 +5,14 @@
     Author: Michael Hollingsworth
 #>
 function Remove-InactiveUserProfile {
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High', DefaultParameterSetName = 'Days')]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = [System.Management.Automation.ConfirmImpact]::High, DefaultParameterSetName = 'Days')]
     param (
         [Parameter(Position = 0, ParameterSetName = 'Days')]
         [ValidateRange(1, [Int32]::MaxValue)]
         [Int32]$MinDaysSinceLastLogon = 90,
-        [Parameter(Position = 0, ParameterSetName = 'CutoffDate')]
+        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'CutoffDate')]
         [DateTime]$CutoffDate,
-        [Parameter(Position = 0, ParameterSetName = 'CutoffTimeSpan')]
+        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'CutoffTimeSpan')]
         [DateTime]$CutoffTimeSpan,
         [Switch]$ExcludeLocalProfiles,
         [Switch]$CalculateProfileSize,
@@ -21,7 +21,7 @@ function Remove-InactiveUserProfile {
     )
 
     if ($Force -and (-not $PSBoundParameters.ContainsKey('Confirm'))) {
-        $ConfirmPreference = 'None'
+        $ConfirmPreference = [System.Management.Automation.ConfirmImpact]::None
     }
 
     if ($PSCmdlet.ParameterSetName -eq 'Days') {
@@ -32,7 +32,7 @@ function Remove-InactiveUserProfile {
 
     [UserProfile[]]$userProfiles = Get-InactiveUserProfile -CutoffDate $CutoffDate -ExcludeLocalProfiles:(!!$ExcludeLocalProfiles)
 
-    $PSCmdlet.WriteVerbose("[$($userProfiles.Count)] profiles were found to be inactive.")
+    $PSCmdlet.WriteVerbose("[$($userProfiles.Count)] inactive profiles were found.")
 
     foreach ($userProfile in $userProfiles) {
         if ($CalculateProfileSize) {

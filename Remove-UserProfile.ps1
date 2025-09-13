@@ -18,7 +18,7 @@
     https://learn.microsoft.com/en-us/previous-versions/windows/desktop/userprofileprov/win32-userprofile
 #>
 function Remove-UserProfile {
-    [CmdletBinding(DefaultParameterSetName = 'Name', SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+    [CmdletBinding(DefaultParameterSetName = 'Name', SupportsShouldProcess = $true, ConfirmImpact = [System.Management.Automation.ConfirmImpact]::High)]
     param (
         [Parameter(Mandatory = $false, Position = 0, ParameterSetName = 'Name')]
         [Alias('Name')]
@@ -36,7 +36,7 @@ function Remove-UserProfile {
 
     # https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/everything-about-shouldprocess#implementing--force
     if ($Force -and (-not $PSBoundParameters.ContainsKey('Confirm'))) {
-        $ConfirmPreference = 'None'
+        $ConfirmPreference = [System.Management.Automation.ConfirmImpact]::None
     }
 
     if (($null -ne $Username) -and ($null -ne $Sid)) {
