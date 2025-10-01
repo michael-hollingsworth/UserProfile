@@ -15,8 +15,6 @@ enum UserProfileStatus {
 
 class UserProfile {
     [System.Security.Principal.NTAccount]$Username
-    # I would like to use [System.Nullable<T>] for these but it looks like PowerShell doesn't like their use in classes.
-    ## The following non-descriptive error is provided when these properties are of type [System.Nullable<T>]: ParentContainsErrorRecordException: An error occurred while creating the pipeline.
     [System.Security.Principal.SecurityIdentifier]$Sid
     [String]$ProfilePath
     [Int64]$ProfileSize
@@ -179,11 +177,7 @@ class UserProfile {
             throw $_
         }
 
-        try {
-            Remove-CimInstance -InputObject $this._userProfile -ErrorAction Stop
-        } catch {
-            throw $_
-        }
+        Remove-CimInstance -InputObject $this._userProfile -ErrorAction Stop
         $this._isDeleted = $true
 
         # Update profile size if it was previously calculated
