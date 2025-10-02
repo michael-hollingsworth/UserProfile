@@ -50,7 +50,7 @@ function Clean-UserProfile {
         try {
             $userProfile.Delete()
         } catch {
-            Write-Warning -Message "Failed to delete user profile [$($userProfile.Username)]. Attempting to delete manually."
+            $PSCmdlet.WriteWarning("Failed to delete user profile [$($userProfile.Username)]. Attempting to delete manually.")
             # Remove everything manually
             Remove-Item -LiteralPath $userProfile.ProfilePath -Recurse -Force -ErrorAction Continue
             Remove-Item -LiteralPath "HKU:\$($userProfile.Sid)" -Recurse -Force -ErrorAction Continue
