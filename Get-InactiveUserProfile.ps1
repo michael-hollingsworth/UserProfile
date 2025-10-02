@@ -13,7 +13,7 @@ function Get-InactiveUserProfile {
         [Int32]$MinDaysSinceLastLogon = 90,
         [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'CutoffDate')]
         [DateTime]$CutoffDate,
-        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'CutoffTimeSpan')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'CutoffTimeSpan')]
         [DateTime]$CutoffTimeSpan,
         [Switch]$ExcludeLocalProfiles,
         [Switch]$CalculateProfileSize

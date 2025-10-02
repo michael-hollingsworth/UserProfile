@@ -18,7 +18,7 @@ function Get-UserProfile {
         [Parameter(Mandatory = $false, Position = 0, ParameterSetName = 'Name')]
         [Alias('Name')]
         [System.Security.Principal.NTAccount[]]$Username,
-        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'Sid')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'Sid')]
         [System.Security.Principal.SecurityIdentifier[]]$Sid,
         [Parameter()]
         [ValidateNotNullOrEmpty()]
