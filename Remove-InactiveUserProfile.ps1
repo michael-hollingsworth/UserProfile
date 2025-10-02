@@ -10,9 +10,9 @@ function Remove-InactiveUserProfile {
         [Parameter(Position = 0, ParameterSetName = 'Days')]
         [ValidateRange(1, [Int32]::MaxValue)]
         [Int32]$MinDaysSinceLastLogon = 90,
-        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'CutoffDate')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'CutoffDate')]
         [DateTime]$CutoffDate,
-        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'CutoffTimeSpan')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'CutoffTimeSpan')]
         [DateTime]$CutoffTimeSpan,
         [Switch]$ExcludeLocalProfiles,
         [Switch]$CalculateProfileSize,
