@@ -10,23 +10,24 @@
     Author: Michael Hollingsworth
 #>
 function Clean-UserProfile {
-    [Cmdletbinding(DefaultParameterSetName = 'Name')]
+    [Cmdletbinding(SupportsShouldProcess = $true, ConfirmImpact = [System.Management.Automation.ConfirmImpact]::High, DefaultParameterSetName = 'Name')]
     param (
         [Parameter(Mandatory = $false, Position = 0, ParameterSetName = 'Name')]
+        [ValidateNotNullOrEmpty()]
         [Alias('Name')]
         [System.Security.Principal.NTAccount[]]$Username,
-        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'Sid')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'Sid')]
+        [ValidateNotNullOrEmpty()]
         [System.Security.Principal.SecurityIdentifier[]]$Sid,
-        [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0, ParameterSetName = 'InputObject')]
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'InputObject')]
         [ValidateNotNullOrEmpty()]
         [UserProfile[]]$InputObject,
         [Switch]$PassThru,
         [Switch]$Force
     )
 
-    # https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/everything-about-shouldprocess#implementing--force
     if ($Force -and (-not $PSBoundParameters.ContainsKey('Confirm'))) {
-        $ConfirmPreference = 'None'
+        $ConfirmPreference = [System.Management.Automation.ConfirmImpact]::None
     }
 
     if ($PSCmdlet.ParameterSetName -ne 'InputObject') {
@@ -42,17 +43,25 @@ function Clean-UserProfile {
     }
 
     foreach ($userProfile in $InputObject) {
-        #TODO: Validate the the ShouldProcess prompt is passed through from Remove-UserProfile
+        if (-not $PSCmdlet.ShouldProcess($userProfile.Username)) {
+            continue
+        }
+
         try {
-            Remove-UserProfile -InputObject $userProfile -ErrorAction Stop
+            $userProfile.Delete()
         } catch {
+            Write-Warning -Message "Failed to delete user profile [$($userProfile.Username)]. Attempting to delete manually."
             # Remove everything manually
-            Remove-Item -LiteralPath $userProfile.ProfilePath -Recurse -Force
-            Remove-Item -LiteralPath "HKU:\$($userProfile.Sid)" -Recurse -Force
-            Remove-Item -LiteralPath "HKU:\$($userProfile.Sid)_Classes" -Recurse -Force
-            Remove-Item -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\$($userProfile.Sid)" -Recurse -Force
-            Remove-Item -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$($userProfile.Sid)" -Recurse -Force
-            Remove-Item -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileService\References\$($userProfile.Sid)" -Recurse -Force
+            Remove-Item -LiteralPath $userProfile.ProfilePath -Recurse -Force -ErrorAction Continue
+            Remove-Item -LiteralPath "HKU:\$($userProfile.Sid)" -Recurse -Force -ErrorAction Continue
+            Remove-Item -LiteralPath "HKU:\$($userProfile.Sid)_Classes" -Recurse -Force -ErrorAction Continue
+            Remove-Item -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\$($userProfile.Sid)" -Recurse -Force -ErrorAction Continue
+            Remove-Item -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$($userProfile.Sid)" -Recurse -Force -ErrorAction Continue
+            Remove-Item -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileService\References\$($userProfile.Sid)" -Recurse -Force -ErrorAction Continue
+        }
+
+        if ($PassThru) {
+            $PSCmdlet.WriteObject($userProfile)
         }
     }
 }
