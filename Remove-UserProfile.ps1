@@ -21,11 +21,13 @@ function Remove-UserProfile {
     [CmdletBinding(DefaultParameterSetName = 'Name', SupportsShouldProcess = $true, ConfirmImpact = [System.Management.Automation.ConfirmImpact]::High)]
     param (
         [Parameter(Mandatory = $false, Position = 0, ParameterSetName = 'Name')]
+        [ValidateNotNullOrEmpty()]
         [Alias('Name')]
         [System.Security.Principal.NTAccount[]]$Username,
-        [Parameter(Mandatory = $true, Position = 0, ParameterSetName = 'Sid')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'Sid')]
+        [ValidateNotNullOrEmpty()]
         [System.Security.Principal.SecurityIdentifier[]]$Sid,
-        [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0, ParameterSetName = 'InputObject')]
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'InputObject')]
         [ValidateNotNullOrEmpty()]
         [UserProfile[]]$InputObject,
         [Parameter(ParameterSetName = 'Filter')]
@@ -34,13 +36,12 @@ function Remove-UserProfile {
         [Switch]$Force
     )
 
-    # https://learn.microsoft.com/en-us/powershell/scripting/learn/deep-dives/everything-about-shouldprocess#implementing--force
     if ($Force -and (-not $PSBoundParameters.ContainsKey('Confirm'))) {
         $ConfirmPreference = [System.Management.Automation.ConfirmImpact]::None
     }
 
-    if (($null -ne $Username) -and ($null -ne $Sid)) {
-        # Pass filter parameters to Get-UserProfile
+    # Pass filter parameters to Get-UserProfile
+    if (($null -ne $Username) -or ($null -ne $Sid)) {
         [HashTable]$splat = $PSBoundParameters
         if ($splat.ContainsKey('PassThru')) {
             $splat.Remove('PassThru')
@@ -68,8 +69,6 @@ function Remove-UserProfile {
         }
 
         if ($PSCmdlet.ShouldProcess($userProfile.Username)) {
-            #TODO: Fix error handling to allow `Clean-UserProfile` to work.
-            ## Ideally, that function could call this one and perform its own logic in the event that this one throws an error.
             try {
                 $userProfile.Delete()
             } catch {
