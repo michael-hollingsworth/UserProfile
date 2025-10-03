@@ -27,7 +27,6 @@ class UserProfile {
     [String]$ComputerName
     hidden [Microsoft.Management.Infrastructure.CimInstance]$_userProfile
     hidden [Boolean]$_isDeleted
-    static hidden [System.Security.Principal.SecurityIdentifier]$_localComputerDomainSid = ([System.Security.Principal.SecurityIdentifier]((Get-CimInstance -Query "SELECT SID FROM Win32_UserAccount WHERE LocalAccount='TRUE'")[0].SID)).AccountDomainSid
 
     UserProfile() {
         $this.Username = $null
@@ -123,7 +122,7 @@ class UserProfile {
         $this.LastUseTime = if ($null -ne $UserProfile.LastUseTime) { $UserProfile.LastUseTime } else { [DateTime]::MinValue }
         $this.Status = [UserProfileStatus]$UserProfile.Status
         $this.IsLoaded = $UserProfile.Loaded
-        $this.IsLocal = (($null -eq $this.Sid.AccountDomainSid) -or ($this.Sid.AccountDomainSid -eq [UserProfile]::_localComputerDomainSid))
+        $this.IsLocal = (($null -eq $this.Sid.AccountDomainSid) -or ($this.Sid.AccountDomainSid -eq ([System.Security.Principal.SecurityIdentifier]((Get-CimInstance -Query "SELECT SID FROM Win32_UserAccount WHERE LocalAccount='TRUE'" -ComputerName $this.ComputerName)[0].SID)).AccountDomainSid))
         $this.IsSpecial = $UserProfile.Special
         $this.ComputerName = $userProfile.PSComputerName
         $this._userProfile = $UserProfile
