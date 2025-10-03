@@ -49,7 +49,7 @@ function Get-UserProfile {
                     [UserProfile]::new($id, $computer)
                 }
             } else {
-                [UserProfile]::GetUserProfiles($computer)
+                [UserProfile]::Get($computer)
             }
         }
 

@@ -194,19 +194,19 @@ class UserProfile {
         #return "$($this.Username.Value);$($this.Sid.Value);$($this.ProfilePath)"
     }
 
-    static [UserProfile[]] GetUserProfiles() {
-        return ([UserProfile]::GetUserProfiles($null, $false))
+    static [UserProfile[]] Get() {
+        return ([UserProfile]::Get($null, $false))
     }
 
-    static [UserProfile[]] GetUserProfiles([Boolean]$CalculateProfileSize) {
-        return ([UserProfile]::GetUserProfiles($null, $CalculateProfileSize))
+    static [UserProfile[]] Get([Boolean]$CalculateProfileSize) {
+        return ([UserProfile]::Get($null, $CalculateProfileSize))
     }
 
-    static [UserProfile[]] GetUserProfiles([String]$ComputerName) {
-        return ([UserProfile]::GetUserProfiles($ComputerName, $false))
+    static [UserProfile[]] Get([String]$ComputerName) {
+        return ([UserProfile]::Get($ComputerName, $false))
     }
 
-    static [UserProfile[]] GetUserProfiles([String]$ComputerName, [Boolean]$CalculateProfileSize) {
+    static [UserProfile[]] Get([String]$ComputerName, [Boolean]$CalculateProfileSize) {
         [Microsoft.Management.Infrastructure.CimInstance[]]$profs = if ([String]::IsNullOrWhiteSpace($ComputerName) -or ($ComputerName -in ($env:ComputerName, '.'))) {
             Get-CimInstance -ClassName Win32_UserProfile -ErrorAction Stop
         } else {
