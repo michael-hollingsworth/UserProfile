@@ -103,7 +103,12 @@ class UserProfile {
     }
     hidden Init([Microsoft.Management.Infrastructure.CimInstance]$UserProfile, [Boolean]$CalculateProfileSize) {
         if ($UserProfile.CimClass.CimClassName -ne 'Win32_UserProfile') {
-            throw 'CIM instance must be of the class [Win32_UserProfile].'
+            throw [System.Management.Automation.ErrorRecord]::new(
+                [System.ArgumentException]::new('CIM instance must be of the class [Win32_UserProfile].'),
+                'NotWin32UserProfile',
+                [System.Management.Automation.ErrorCategory]::InvalidType,
+                $UserProfile
+            )
         }
 
         $this.Sid = $UserProfile.SID
@@ -112,7 +117,7 @@ class UserProfile {
         } catch {
             # Fall back to using the profile path to determine username
             if ([String]::IsNullOrWhiteSpace($UserProfile.LocalPath)) {
-                throw
+                throw $_
             }
             $UserProfile.LocalPath.Split('\')[-1]
         }
@@ -153,13 +158,23 @@ class UserProfile {
         }
 
         if ($this.IsLoaded) {
-            throw 'Loaded profiles cannot be deleted.'
+            throw [System.Management.Automation.ErrorRecord]::new(
+                [System.InvalidOperationException]::new('Loaded profiles cannot be deleted.'),
+                'DeleteLoadedProfile',
+                [System.Management.Automation.ErrorCategory]::InvalidOperation,
+                $null
+            )
         }
 
         # https://learn.microsoft.com/en-us/previous-versions/windows/desktop/userprofileprov/win32-userprofile
         ## "Whether the user profile is owned by a special system service. True if the user profile is owned by a system service; otherwise false."
         if ($this.IsSpecial) {
-            throw 'Special profiles cannot be deleted.'
+            throw [System.Management.Automation.ErrorRecord]::new(
+                [System.InvalidOperationException]::new('Special profiles cannot be deleted.'),
+                'DeleteSpecialProfile',
+                [System.Management.Automation.ErrorCategory]::InvalidOperation,
+                $null
+            )
         }
 
         # Validate the the CIM instance still exists before attempting to delete it.
