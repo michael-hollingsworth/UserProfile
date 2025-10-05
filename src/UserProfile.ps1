@@ -5,6 +5,7 @@
     https://learn.microsoft.com/en-us/previous-versions/windows/desktop/userprofileprov/win32-userprofile
 #>
 
+[Flags()]
 enum UserProfileStatus {
     Undefined = 0  # The status of the profile is not set.
     Temporary = 1  # The profile is a temporary profile and will be deleted after the user logs off.
