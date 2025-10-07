@@ -38,7 +38,7 @@ class UserProfile {
         $this.ProfileSizeMB = [Decimal]::MinusOne
         $this.LastUseTime = [DateTime]::MinValue
         # idk if this property even works anymore or if its just more legacy junk left in WMI.
-        $this.Status = 0
+        $this.Status = [UserProfileStatus]::Undefined
         $this.IsLoaded = $false
         $this.IsLocal = $false
         $this.IsSpecial = $false
@@ -127,7 +127,7 @@ class UserProfile {
         $this.ProfileSize = if ([String]::IsNullOrWhiteSpace($this.ProfilePath) -or (-not (Test-Path -LiteralPath $this.ProfilePath -ErrorAction Ignore))) { 0 } else { -1 }
         $this.ProfileSizeMB = if ($this.ProfileSize -eq 0) { [Decimal]::Zero } else { [Decimal]::MinusOne }
         $this.LastUseTime = if ($null -ne $UserProfile.LastUseTime) { $UserProfile.LastUseTime } else { [DateTime]::MinValue }
-        $this.Status = [UserProfileStatus]$UserProfile.Status
+        $this.Status = if ($null -eq $UserProfile.Status) { [UserProfileStatus]::Undefined } else { [Enum]::Parse([UserProfileStatus], $UserProfile.Status) }
         $this.IsLoaded = $UserProfile.Loaded
         [String]$compName = if ([String]::IsNullOrWhiteSpace($UserProfile.PSComputerName)) { $env:ComputerName } else { $UserProfile.PSComputerName }
 
