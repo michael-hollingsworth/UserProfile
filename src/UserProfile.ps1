@@ -127,7 +127,7 @@ class UserProfile {
         $this.ProfileSize = if ([String]::IsNullOrWhiteSpace($this.ProfilePath) -or (-not (Test-Path -LiteralPath $this.ProfilePath -ErrorAction Ignore))) { 0 } else { -1 }
         $this.ProfileSizeMB = if ($this.ProfileSize -eq 0) { [Decimal]::Zero } else { [Decimal]::MinusOne }
         $this.LastUseTime = if ($null -ne $UserProfile.LastUseTime) { $UserProfile.LastUseTime } else { [DateTime]::MinValue }
-        $this.Status = if ($null -eq $UserProfile.Status) { [UserProfileStatus]::Undefined } else { [Enum]::Parse([UserProfileStatus], $UserProfile.Status) }
+        $this.Status = [UserProfileStatus]$UserProfile.Status
         $this.IsLoaded = $UserProfile.Loaded
         [String]$compName = if ([String]::IsNullOrWhiteSpace($UserProfile.PSComputerName)) { $env:ComputerName } else { $UserProfile.PSComputerName }
 
@@ -235,7 +235,28 @@ class UserProfile {
         }
 
         return $(foreach ($prof in $profs) {
-            [UserProfile]::new($prof, $CalculateProfileSize)
+            try {
+                [UserProfile]::new($prof, $CalculateProfileSize)
+            } catch {
+                if ($_.FullyQualifiedErrorId -eq 'nullToEnumInvalidCast') {
+                    [System.Management.Automation.ErrorRecord]$err = [System.Management.Automation.ErrorRecord]::new(
+                        [System.Management.Automation.RuntimeException]::new("The user profile '$($prof.SID)' is corrupted.", $_.Exception, $_),
+                        'CorruptedUserProfile',
+                        [System.Management.Automation.ErrorCategory]::InvalidData,
+                        $prof
+                    )
+                    $err.CategoryInfo.Activity.Reason = '[UserProfile]::new()'
+                    $err.CategoryInfo.Reason = 'The user profile is corrupted'
+                    $err.CategoryInfo.TargetName = $prof.SID
+                    [System.Management.Automation.ErrorDetails]$errorDetails = [System.Management.Automation.ErrorDetails]::new($_.Exception.Message)
+                    $errorDetails.RecommendedAction = "Remove the user profile using the 'Clean-UserProfile' function."
+                    $err.ErrorDetails = $errorDetails
+                    Write-Error -ErrorRecord $err
+                    continue
+                }
+
+                throw $_
+            }
         })
     }
 }
