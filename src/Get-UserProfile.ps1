@@ -12,13 +12,14 @@
     Author: Michael Hollingsworth
 #>
 function Get-UserProfile {
-    [CmdletBinding(DefaultParameterSetName = 'Name')]
+    [CmdletBinding(DefaultParameterSetName = 'Filter')]
     [OutputType([UserProfile[]])]
     param (
-        [Parameter(Mandatory = $false, Position = 0, ParameterSetName = 'Name')]
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0, ParameterSetName = 'Name')]
+        [ValidateNotNullOrEmpty()]
         [Alias('Name')]
         [System.Security.Principal.NTAccount[]]$Username,
-        [Parameter(Mandatory = $true, ParameterSetName = 'Sid')]
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true, ParameterSetName = 'Sid')]
         [System.Security.Principal.SecurityIdentifier[]]$Sid,
         [Parameter()]
         [ValidateNotNullOrEmpty()]
@@ -33,16 +34,16 @@ function Get-UserProfile {
     )
 
     begin {
+        if ($null -eq $ComputerName) {
+            [String[]]$ComputerName = $env:ComputerName
+        }
+    } process {
         if ($null -ne $Username) {
             $identity = $Username
         } elseif ($null -ne $Sid) {
             $identity = $Sid
         }
 
-        if ($null -eq $ComputerName) {
-            [String[]]$ComputerName = @('.')
-        }
-    } process {
         [UserProfile[]]$userProfiles = foreach ($computer in $ComputerName) {
             if ($null -ne $identity) {
                 foreach ($id in $identity) {

@@ -46,31 +46,33 @@ function ConvertTo-NTAccount {
     [CmdletBinding()]
     [OutputType([System.Security.Principal.NTAccount])]
     param (
-        [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0)]
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true, Position = 0)]
         [ValidateNotNullOrEmpty()]
         [Alias('SecurityIdentifier')]
         [System.Security.Principal.SecurityIdentifier]$Sid
     )
 
-    try {
-        $Sid.Translate([System.Security.Principal.NTAccount])
-    } catch {
+    begin {
         [GroupPolicyAccountInfo[]]$gpAccountInfo = [GroupPolicyAccountInfo]::GetGroupPolicyAccountInfo()
+    } process {
+        try {
+            $Sid.Translate([System.Security.Principal.NTAccount])
+        } catch {
+            # If we don't have any GP info to fall back on, throw the original error
+            if ($null -eq $gpAccountInfo -or $gpAccountInfo.Count -lt 1) {
+                throw $_
+            }
 
-        # If we don't have any GP info to fall back on, throw the original error
-        if ($null -eq $gpAccountInfo -or $gpAccountInfo.Count -lt 1) {
+            # Identify GP account with matching SID and return it
+            foreach ($account in $gpAccountInfo) {
+                if ($account.Sid.Equals($Sid)) {
+                    return ($account.Username)
+                }
+            }
+
+            # If we don't have GP info with a matching SID, throw the original error
             throw $_
         }
-
-        # Identify GP account with matching SID and return it
-        foreach ($account in $gpAccountInfo) {
-            if ($account.Sid.Equals($Sid)) {
-                return ($account.Username)
-            }
-        }
-
-        # If we don't have GP info with a matching SID, throw the original error
-        throw $_
     }
 }
 
@@ -78,30 +80,32 @@ function ConvertTo-Sid {
     [CmdletBinding()]
     [OutputType([System.Security.Principal.SecurityIdentifier])]
     param (
-        [Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0)]
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true, Position = 0)]
         [ValidateNotNullOrEmpty()]
         [Alias('Username')]
         [System.Security.Principal.NTAccount]$NTAccount
     )
 
-    try {
-        $NTAccount.Translate([System.Security.Principal.SecurityIdentifier])
-    } catch {
+    begin {
         [GroupPolicyAccountInfo[]]$gpAccountInfo = [GroupPolicyAccountInfo]::GetGroupPolicyAccountInfo()
+    } process {
+        try {
+            $NTAccount.Translate([System.Security.Principal.SecurityIdentifier])
+        } catch {
+            # If we don't have any GP info to fall back on, throw the original error
+            if ($null -eq $gpAccountInfo -or $gpAccountInfo.Count -lt 1) {
+                throw $_
+            }
 
-        # If we don't have any GP info to fall back on, throw the original error
-        if ($null -eq $gpAccountInfo -or $gpAccountInfo.Count -lt 1) {
+            # Identify GP account with matching username and return it
+            foreach ($account in $gpAccountInfo) {
+                if ($account.Username.Equals($NTAccount)) {
+                    return ($account.Sid)
+                }
+            }
+
+            # If we don't have GP info with a matching SID, throw the original error
             throw $_
         }
-
-        # Identify GP account with matching username and return it
-        foreach ($account in $gpAccountInfo) {
-            if ($account.Username.Equals($NTAccount)) {
-                return ($account.Sid)
-            }
-        }
-
-        # If we don't have GP info with a matching SID, throw the original error
-        throw $_
     }
 }

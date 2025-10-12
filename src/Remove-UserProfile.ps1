@@ -20,11 +20,11 @@
 function Remove-UserProfile {
     [CmdletBinding(DefaultParameterSetName = 'Name', SupportsShouldProcess = $true, ConfirmImpact = [System.Management.Automation.ConfirmImpact]::High)]
     param (
-        [Parameter(Mandatory = $false, Position = 0, ParameterSetName = 'Name')]
+        [Parameter(Mandatory = $false, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true, Position = 0, ParameterSetName = 'Name')]
         [ValidateNotNullOrEmpty()]
         [Alias('Name')]
         [System.Security.Principal.NTAccount[]]$Username,
-        [Parameter(Mandatory = $true, ParameterSetName = 'Sid')]
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true, ParameterSetName = 'Sid')]
         [ValidateNotNullOrEmpty()]
         [System.Security.Principal.SecurityIdentifier[]]$Sid,
         [Parameter(Mandatory = $true, ValueFromPipeline = $true, ParameterSetName = 'InputObject')]
@@ -36,47 +36,49 @@ function Remove-UserProfile {
         [Switch]$Force
     )
 
-    if ($Force -and (-not $PSBoundParameters.ContainsKey('Confirm'))) {
-        $ConfirmPreference = [System.Management.Automation.ConfirmImpact]::None
-    }
-
-    # Pass filter parameters to Get-UserProfile
-    if (($null -ne $Username) -or ($null -ne $Sid)) {
-        [HashTable]$splat = $PSBoundParameters
-        if ($splat.ContainsKey('PassThru')) {
-            $splat.Remove('PassThru')
+    begin {
+        if ($Force -and (-not $PSBoundParameters.ContainsKey('Confirm'))) {
+            $ConfirmPreference = [System.Management.Automation.ConfirmImpact]::None
         }
-        if ($splat.ContainsKey('Force')) {
-            $splat.Remove('Force')
-        }
-
-        [UserProfile[]]$InputObject = Get-UserProfile @splat
-    } elseif ($PSCmdlet.ParameterSetName -ne 'InputObject') {
-        [UserProfile[]]$InputObject = Get-UserProfile -ExcludeLoadedProfiles -ExcludeSpecialprofiles -ExcludeLocalProfiles:(!!$ExcludeLocalProfiles)
-    }
-
-    foreach ($userProfile in $InputObject) {
-        # Loaded profiles can't be deleted
-        if ($userProfile.IsLoaded) {
-            $PSCmdlet.WriteWarning("Skipping user profile [$($userProfile.Username)] with SID [$($userProfile.Sid)] since it is currently loaded.")
-            continue
-        }
-
-        # Special profiles can't/shouldn't be deteled
-        if ($userProfile.IsSpecial) {
-            $PSCmdlet.WriteWarning("Skipping user profile [$($userProfile.Username)] with SID [$($userProfile.Sid)] since it is a special profile.")
-            continue
-        }
-
-        if ($PSCmdlet.ShouldProcess($userProfile.Username)) {
-            try {
-                $userProfile.Delete()
-            } catch {
-                $PSCmdlet.WriteError($_)
+    } process {
+        # Pass filter parameters to Get-UserProfile
+        if (($null -ne $Username) -or ($null -ne $Sid)) {
+            [HashTable]$splat = $PSBoundParameters
+            if ($splat.ContainsKey('PassThru')) {
+                $splat.Remove('PassThru')
+            }
+            if ($splat.ContainsKey('Force')) {
+                $splat.Remove('Force')
             }
 
-            if ($PassThru) {
-                $PSCmdlet.WriteObject($userProfile)
+            [UserProfile[]]$InputObject = Get-UserProfile @splat
+        } elseif ($PSCmdlet.ParameterSetName -ne 'InputObject') {
+            [UserProfile[]]$InputObject = Get-UserProfile -ExcludeLoadedProfiles -ExcludeSpecialprofiles -ExcludeLocalProfiles:(!!$ExcludeLocalProfiles)
+        }
+
+        foreach ($userProfile in $InputObject) {
+            # Loaded profiles can't be deleted
+            if ($userProfile.IsLoaded) {
+                $PSCmdlet.WriteWarning("Skipping user profile [$($userProfile.Username)] with SID [$($userProfile.Sid)] since it is currently loaded.")
+                continue
+            }
+
+            # Special profiles can't/shouldn't be deteled
+            if ($userProfile.IsSpecial) {
+                $PSCmdlet.WriteWarning("Skipping user profile [$($userProfile.Username)] with SID [$($userProfile.Sid)] since it is a special profile.")
+                continue
+            }
+
+            if ($PSCmdlet.ShouldProcess($userProfile.Username)) {
+                try {
+                    $userProfile.Delete()
+                } catch {
+                    $PSCmdlet.WriteError($_)
+                }
+
+                if ($PassThru) {
+                    $PSCmdlet.WriteObject($userProfile)
+                }
             }
         }
     }
