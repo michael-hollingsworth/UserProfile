@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='utf-8'?>
+<PowerShellMetadata xmlns="http://schemas.microsoft.com/cmdlets-over-objects/2009/11">
+  <Class ClassName="root/cimv2/Win32_UserProfile" ClassVersion="1.0.0">
+    <Version>1.0.0.0</Version>
+    <DefaultNoun>UserProfile</DefaultNoun>
+    <InstanceCmdlets>
+      <GetCmdletParameters>
+        <QueryableProperties>
+          <Property PropertyName="SID">
+            <Type PSType="string"/>
+            <RegularQuery AllowGlobbing="true">
+              <CmdletParameterMetadata PSName="Sid"/>
+            </RegularQuery>
+          </Property>
+          <Property PropertyName="LocalPath">
+            <Type PSType="string"/>
+            <RegularQuery AllowGlobbing="true">
+              <CmdletParameterMetadata PSName="ProfilePath"/>
+            </RegularQuery>
+          </Property>
+          <Property PropertyName="Loaded">
+            <Type PSType="boolean"/>
+            <RegularQuery>
+              <CmdletParameterMetadata PSName="IsLoaded"/>
+            </RegularQuery>
+          </Property>
+          <Property PropertyName="Special">
+            <Type PSType="boolean"/>
+            <RegularQuery>
+              <CmdletParameterMetadata PSName="IsSpecial"/>
+            </RegularQuery>
+          </Property>
+          <Property PropertyName="LastUseTime">
+            <Type PSType="datetime"/>
+            <RegularQuery>
+              <CmdletParameterMetadata/>
+            </RegularQuery>
+          </Property>
+          <Property PropertyName="LastDownloadTime">
+            <Type PSType="datetime"/>
+            <RegularQuery>
+              <CmdletParameterMetadata/>
+            </RegularQuery>
+          </Property>
+          <Property PropertyName="LastUploadTime">
+            <Type PSType="datetime"/>
+            <RegularQuery>
+              <CmdletParameterMetadata/>
+            </RegularQuery>
+          </Property>
+          <Property PropertyName="Status">
+            <Type PSType="UserProfile.Status"/>
+            <RegularQuery>
+              <CmdletParameterMetadata/>
+            </RegularQuery>
+          </Property>
+        </QueryableProperties>
+      </GetCmdletParameters>
+      <Cmdlet>
+        <CmdletMetadata Verb="Remove" ConfirmImpact="High"/>
+        <Method MethodName="cim:DeleteInstance"/>
+      </Cmdlet>
+    </InstanceCmdlets>
+  </Class>
+  <Enums>
+    <Enum EnumName="UserProfile.Status" UnderlyingType="uint32" BitwiseFlags="true">
+      <Value Name="Undefined" Value="0"/>
+      <Value Name="Temporary" Value="1"/>
+      <Value Name="Roaming" Value="2"/>
+      <Value Name="Mandatory" Value="4"/>
+      <Value Name="Corrupted" Value="8"/>
+    </Enum>
+  </Enums>
+</PowerShellMetadata>
