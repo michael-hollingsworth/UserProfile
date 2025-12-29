@@ -35,9 +35,27 @@ function Get-InactiveUserProfile {
     $PSCmdlet.WriteVerbose("[$($userProfiles.Count)] profiles were found.")
 
     foreach ($userProfile in $userProfiles) {
-        if ($userProfile.LastUseTime -gt $CutoffDate) {
-            $PSCmdlet.WriteVerbose("Skipping user profile [$($userProfile.Username)] because it has logged in in the last [$($CutoffTimeSpan.Days)] days: [$($userProfile.LastUseTime)]")
-            continue
+        # https://learn.microsoft.com/en-us/troubleshoot/windows-server/support-tools/scripts-to-retrieve-profile-age
+        [System.Nullable[DateTime]]$lastLoadTime = $null
+
+        # Validate that the LocalProfileLoadTime exists before attempting to process it
+        if ($null -ne $userProfile.LastUnloadTime) {
+            # Sometimes, the LocalProfileLoadTime will be higher (more recent) than the LocalProfileUnloadTime
+            $lastLoadTime = [DateTime]::new(([Math]::Max($userProfile.LastLoadTime.Ticks, $userProfile.LastUnloadTime.Ticks)))
+        }
+
+        if ($null -eq $lastLoadTime) {
+            if ($userProfile.LastUseTime -gt $CutoffDate) {
+                if (($null -eq $userProfile.LastProfileCleanupCheck) -or ($userProfile.LastProfileCleanupCheck -gt $CutoffDate)) {
+                    $PSCmdlet.WriteVerbose("Skipping user profile [$($userProfile.Username)] because it has logged in in the last [$($CutoffTimeSpan.Days)] days: [$($userProfile.LastUseTime)]")
+                    continue
+                }
+            }
+        } else {
+            if (($lastLoadTime -gt $CutoffDate) -and ($userProfile.LastUseTime -gt $CutoffDate)) {
+                $PSCmdlet.WriteVerbose("Skipping user profile [$($userProfile.Username)] because it has logged in in the last [$($CutoffTimeSpan.Days)] days: [$($userProfile.LastUseTime)]")
+                continue
+            }
         }
 
         if ($CalculateProfileSize) {

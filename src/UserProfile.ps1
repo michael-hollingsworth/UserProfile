@@ -7,11 +7,11 @@
 
 [Flags()]
 enum UserProfileStatus {
+    Corrupted = -1  # The profile is corrupted and is not in use. The user or administrator must fix the corruption to use the profile.
     Undefined = 0  # The status of the profile is not set.
     Temporary = 1  # The profile is a temporary profile and will be deleted after the user logs off.
     Roaming = 2  # The profile is set to roaming. If this bit is not set, the profile is set to local.
     Mandatory = 4  # The profile is a mandatory profile.
-    Corrupted = 8  # The profile is corrupted and is not in use. The user or administrator must fix the corruption to use the profile.
 }
 
 class UserProfile {
@@ -21,6 +21,9 @@ class UserProfile {
     [Int64]$ProfileSize
     [Decimal]$ProfileSizeMB
     [DateTime]$LastUseTime
+    [System.Nullable[DateTime]]$LastLoadTime
+    [System.Nullable[DateTime]]$LastUnloadTime
+    [System.Nullable[DateTime]]$LastProfileCleanupCheck
     [UserProfileStatus]$Status
     [Boolean]$IsLoaded
     [Boolean]$IsLocal
@@ -37,6 +40,9 @@ class UserProfile {
         $this.ProfileSize = -1
         $this.ProfileSizeMB = [Decimal]::MinusOne
         $this.LastUseTime = [DateTime]::MinValue
+        $this.LastLoadTime = $null
+        $this.LastUnloadTime = $null
+        $this.LastProfileCleanupCheck = $null
         # idk if this property even works anymore or if its just more legacy junk left in WMI.
         $this.Status = [UserProfileStatus]::Undefined
         $this.IsLoaded = $false
@@ -127,6 +133,24 @@ class UserProfile {
         $this.ProfileSize = if ([String]::IsNullOrWhiteSpace($this.ProfilePath) -or (-not (Test-Path -LiteralPath $this.ProfilePath -ErrorAction Ignore))) { 0 } else { -1 }
         $this.ProfileSizeMB = if ($this.ProfileSize -eq 0) { [Decimal]::Zero } else { [Decimal]::MinusOne }
         $this.LastUseTime = if ($null -ne $UserProfile.LastUseTime) { $UserProfile.LastUseTime } else { [DateTime]::MinValue }
+
+        # https://learn.microsoft.com/en-us/troubleshoot/windows-server/support-tools/scripts-retrieve-profile-age-delete-aged-copies
+        $reg = Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$($userProfile.SID)" -Name ('LocalProfileLoadTimeLow', 'LocalProfileLoadTimeHigh', 'LocalProfileUnLoadTimeLow', 'LocalProfileUnLoadTimeHigh', 'LocalProfileCleanupCheckTimeLow', 'LocalProfileCleanupCheckTimeHigh') -ErrorAction Ignore
+        if (-not ($null -eq ($reg.LocalProfileUnloadTimeLow) -or ($null -eq $reg.LocalProfileLoadTimeHigh))) {
+            $highTime = [UInt64]$reg.LocalProfileLoadTimeHigh -shl 32
+            $this.LastLoadTime = [DateTime]::FromFileTime($highTime -bor [UInt64]$reg.LocalProfileLoadTimeLow)
+        }
+
+        if (-not ($null -eq ($reg.LocalProfileUnLoadTimeLow) -or ($null -eq $reg.LocalProfileUnLoadTimeHigh))) {
+            $highTime = [UInt64]$reg.LocalProfileUnLoadTimeHigh -shl 32
+            $this.LastUnloadTime = [DateTime]::FromFileTime($highTime -bor [UInt64]$reg.LocalProfileUnLoadTimeLow)
+        }
+
+        if (-not ($null -eq ($reg.LocalProfileCleanupCheckTimeLow) -or ($null -eq $reg.LocalProfileCleanupCheckTimeHigh))) {
+            $highTime = [UInt64]$reg.LocalProfileCleanupCheckTimeHigh -shl 32
+            $this.LastProfileCleanupCheck = [DateTime]::FromFileTime($highTime -bor [UInt64]$reg.LocalProfileCleanupCheckTimeLow)
+        }
+
         $this.Status = [UserProfileStatus]$UserProfile.Status
         $this.IsLoaded = $UserProfile.Loaded
         [String]$compName = if ([String]::IsNullOrWhiteSpace($UserProfile.PSComputerName)) { $env:ComputerName } else { $UserProfile.PSComputerName }

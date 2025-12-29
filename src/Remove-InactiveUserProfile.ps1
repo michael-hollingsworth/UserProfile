@@ -39,7 +39,7 @@ function Remove-InactiveUserProfile {
             $userProfile.CalculateProfileSize()
         }
 
-        # Write the object to to the console so the user can determine if they want to delete it or not based on other properties.
+        # Write the object to the console so the user can determine if they want to delete it or not based on other properties.
         Write-Host -Object $(Out-String -InputObject $userProfile)
         if ($PSCmdlet.ShouldProcess($userProfile.Username)) {
             try {
