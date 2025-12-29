@@ -1,6 +1,8 @@
 <#
-.DESCRIPTION
-    This is an example script that can be used to delete user profiles for users that have been disabled in AD.
+.SYNOPSIS
+    Deletes user profiles that belong to accounts that are disabled.
+.EXAMPLE
+    Remove-DisabledUserProfile -ExcludeLocalProfiles -Force
 .NOTES
     Author: Michael Hollingsworth
 #>
