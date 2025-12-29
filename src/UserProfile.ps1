@@ -151,7 +151,12 @@ class UserProfile {
             $this.LastProfileCleanupCheck = [DateTime]::FromFileTime($highTime -bor [UInt64]$reg.LocalProfileCleanupCheckTimeLow)
         }
 
-        $this.Status = [UserProfileStatus]$UserProfile.Status
+        $this.Status = if (($null -eq $UserProfile.Status) -or ($userProfile.Status -eq -1)) {
+            Write-Warning -Message "The user profile [$($this.Username)] is most likely corrupted due to it having the Status value of [$($UserProfile.Status)]."
+            [UserProfileStatus]::Corrupted
+        } else {
+            [UserProfileStatus]$UserProfile.Status
+        }
         $this.IsLoaded = $UserProfile.Loaded
         [String]$compName = if ([String]::IsNullOrWhiteSpace($UserProfile.PSComputerName)) { $env:ComputerName } else { $UserProfile.PSComputerName }
 
@@ -262,14 +267,17 @@ class UserProfile {
             try {
                 [UserProfile]::new($prof, $CalculateProfileSize)
             } catch {
-                if ($_.FullyQualifiedErrorId -eq 'nullToEnumInvalidCast') {
+                # Write-Error doesn't work in class methods:
+                ## https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_classes_methods
+                ## https://github.com/powershell/powershell/issues/5331
+                <# if ($_.FullyQualifiedErrorId -eq 'nullToEnumInvalidCast') {
                     [System.Management.Automation.ErrorRecord]$err = [System.Management.Automation.ErrorRecord]::new(
                         [System.Management.Automation.RuntimeException]::new("The user profile '$($prof.SID)' is corrupted.", $_.Exception, $_),
                         'CorruptedUserProfile',
                         [System.Management.Automation.ErrorCategory]::InvalidData,
                         $prof
                     )
-                    $err.CategoryInfo.Activity.Reason = '[UserProfile]::new()'
+                    $err.CategoryInfo.Activity = '[UserProfile]::new()'
                     $err.CategoryInfo.Reason = 'The user profile is corrupted'
                     $err.CategoryInfo.TargetName = $prof.SID
                     [System.Management.Automation.ErrorDetails]$errorDetails = [System.Management.Automation.ErrorDetails]::new($_.Exception.Message)
@@ -277,7 +285,7 @@ class UserProfile {
                     $err.ErrorDetails = $errorDetails
                     Write-Error -ErrorRecord $err
                     continue
-                }
+                } #>
 
                 throw $_
             }
