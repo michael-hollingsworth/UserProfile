@@ -7,22 +7,42 @@
 function Remove-DisabledUserProfile {
     [CmdletBinding()]
     param (
+        [Swtich]$ExcludeLocalProfiles,
+        [Switch]$Force
     )
 
-    # Use ADSI instead of the AD module to prevent the need to install the AD module on workstations.
-    [ADSISearcher]$objSearcher = [ADSISearcher]::new()
-    $objSearcher.Filter = '(&(objectClass=user)(userAccountControl:1.2.840.113556.1.4.803:=2))'
-    $disabledUsers = $objSearcher.FindAll()
-    #TODO: grab just the SIDs and put them in an array
-    #[String[]]$disabledSids = $disabledUsers.Sid
+    begin {
+        [ADSISearcher]$objectSearcher = [ADSISearcher]::new()
+    } process {
+        [UserProfile[]]$profs = Get-UserProfile -ExcludeLoadedProfiles -ExcludeSpecialprofiles -ExcludeLocalProfiles:(!!$ExcludeLocalProfiles)
+        foreach ($prof in $profs) {
+            if ($prof.IsLocal) {
+                if ((Get-LocalUser -SID $prof.Sid).Enabled) {
+                    $PSCmdlet.WriteVerbose("Skipping user profile for local account [$($prof.Username)] because it is enabled.")
+                    continue
+                }
+            } else {
+                [String]$hexSid = Convert-SidToLdapHexFilter -Sid $prof.SID
+                $objectSearcher.Fitler = "(&(objectClass=user)(objectSid=$hexSid))"
+                $user = $objectSearcher.FindAll()
 
-    [UserProfile[]]$profs = Get-UserProfile
+                if ($user.Count -gt 1) {
+                    $PSCmdlet.WriteWarning("More than one result was returned for account [$($prof.Username)] with the SID [$($prof.SID)].")
+                    continue
+                }
 
-    $profsToRemove = $profs | Where-Object { $_.Sid -in $disabledSids }
-    foreach ($profToRemove in $profsToRemove) {
-        # Add custom logging or export a list of profiles that have been removed here
+                # Skip if the account is enabled. If the account doesn't exist ($user.Count -eq 0), delete it
+                if (($user.Count -eq 1) -and (($user.PropertiesLoaded.useraccountcontrol.Item(0) -band 2) -eq 0)) {
+                    $PSCmdlet.WriteVerbose("Skipping user profiel for account [$($prof.Username)] because it is enabled.")
+                    continue
+                }
+            }
 
-        Remove-UserProfile -InputObject $profToRemove -Force
+            Remove-UserProfile -InputObject $prof -Force:(!!$Force)
+        }
+    } end {
+        $objectSearcher.Dispose()
+        $objectSearcher = $null
     }
 }
 
