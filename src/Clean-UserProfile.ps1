@@ -39,7 +39,7 @@ function Clean-UserProfile {
             $splat.Remove('Force')
         }
 
-        [UserProfile[]]$InputObject = Get-UserProfile @splat -ExcludeLoadedProfiles -ExcludeSpecialProfiles
+        [UserProfile[]]$InputObject = Get-UserProfile @splat
     }
 
     foreach ($userProfile in $InputObject) {
@@ -52,7 +52,9 @@ function Clean-UserProfile {
         } catch {
             $PSCmdlet.WriteWarning("Failed to delete user profile [$($userProfile.Username)]. Attempting to delete manually.")
             # Remove everything manually
-            Remove-Item -LiteralPath $userProfile.ProfilePath -Recurse -Force -ErrorAction Continue
+            if (-not [String]::IsNullOrWhiteSpace($userProfile.ProfilePath)) {
+                Remove-Item -LiteralPath $userProfile.ProfilePath -Recurse -Force -ErrorAction Continue
+            }
             Remove-Item -LiteralPath "HKU:\$($userProfile.Sid)" -Recurse -Force -ErrorAction Continue
             Remove-Item -LiteralPath "HKU:\$($userProfile.Sid)_Classes" -Recurse -Force -ErrorAction Continue
             Remove-Item -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\$($userProfile.Sid)" -Recurse -Force -ErrorAction Continue

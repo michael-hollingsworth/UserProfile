@@ -70,7 +70,11 @@ class UserProfile {
     }
     hidden Init([System.Security.Principal.NTAccount]$Username, [String]$ComputerName, [Boolean]$CalculateProfileSize) {
         [System.Security.Principal.SecurityIdentifier]$tmpSid = ConvertTo-Sid -NTAccount $Username
-        $this.Init($tmpSid, $ComputerName, $CalculateProfileSize)
+        try {
+            $this.Init($tmpSid, $ComputerName, $CalculateProfileSize)
+        } catch {
+            throw "A user profile does not exist for a user with the username [$($Username.Value)]."
+        }
     }
 
     UserProfile([System.Security.Principal.SecurityIdentifier]$Sid) {
@@ -96,7 +100,7 @@ class UserProfile {
         }
 
         if ($null -eq $userProfile) {
-            return
+            throw "A user profile does not exist for a user with the SID [$($Sid.Value)]."
         }
 
         $this.Init($userProfile, $CalculateProfileSize)
@@ -111,12 +115,12 @@ class UserProfile {
     }
     hidden Init([Microsoft.Management.Infrastructure.CimInstance]$UserProfile, [Boolean]$CalculateProfileSize) {
         if ($UserProfile.CimClass.CimClassName -ne 'Win32_UserProfile') {
-            throw [System.Management.Automation.ErrorRecord]::new(
+            throw ([System.Management.Automation.ErrorRecord]::new(
                 [System.ArgumentException]::new('CIM instance must be of the class [Win32_UserProfile].'),
                 'NotWin32UserProfile',
                 [System.Management.Automation.ErrorCategory]::InvalidType,
                 $UserProfile
-            )
+            ))
         }
 
         $this.Sid = $UserProfile.SID
