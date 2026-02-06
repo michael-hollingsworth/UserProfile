@@ -42,7 +42,7 @@ function Remove-UserProfile {
         }
     } process {
         # Pass filter parameters to Get-UserProfile
-        if (($null -ne $Username) -or ($null -ne $Sid)) {
+        [UserProfile[]]$userProfiles = if (($null -ne $Username) -or ($null -ne $Sid)) {
             [HashTable]$splat = $PSBoundParameters
             if ($splat.ContainsKey('PassThru')) {
                 $splat.Remove('PassThru')
@@ -51,12 +51,14 @@ function Remove-UserProfile {
                 $splat.Remove('Force')
             }
 
-            [UserProfile[]]$InputObject = Get-UserProfile @splat
+            Get-UserProfile @splat
         } elseif ($PSCmdlet.ParameterSetName -ne 'InputObject') {
-            [UserProfile[]]$InputObject = Get-UserProfile -ExcludeLoadedProfiles -ExcludeSpecialprofiles -ExcludeLocalProfiles:(!!$ExcludeLocalProfiles)
+            Get-UserProfile -ExcludeLoadedProfiles -ExcludeSpecialprofiles -ExcludeLocalProfiles:(!!$ExcludeLocalProfiles)
+        } else {
+            $InputObject
         }
 
-        foreach ($userProfile in $InputObject) {
+        foreach ($userProfile in $userProfiles) {
             # Loaded profiles can't be deleted
             if ($userProfile.IsLoaded) {
                 $PSCmdlet.WriteWarning("Skipping user profile [$($userProfile.Username)] with SID [$($userProfile.Sid)] since it is currently loaded.")
