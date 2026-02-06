@@ -1,5 +1,13 @@
-function Remove-InactiveOutlookProfile {
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = [System.Management.Automation.ConfirmImpact]::High)]
+<#
+.DESCRIPTION
+    This function is used to delete Outlook profiles on a computer that haven't been accessed in an extended period of time.
+.NOTES
+    Author: Michael Hollingsworth
+.LINK
+    https://github.com/michael-hollingsworth/UserProfile
+#>
+function Remove-InactiveUserProfile {
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = [System.Management.Automation.ConfirmImpact]::High, DefaultParameterSetName = 'Days')]
     param (
         [Parameter(Position = 0, ParameterSetName = 'Days')]
         [ValidateRange(1, [Int32]::MaxValue)]
@@ -9,6 +17,7 @@ function Remove-InactiveOutlookProfile {
         [Parameter(Mandatory = $true, ParameterSetName = 'CutoffTimeSpan')]
         [DateTime]$CutoffTimeSpan,
         [Switch]$ExcludeLocalProfiles,
+        [Switch]$CalculateProfileSize,
         [Switch]$PassThru,
         [Switch]$Force
     )
@@ -28,12 +37,19 @@ function Remove-InactiveOutlookProfile {
     $PSCmdlet.WriteVerbose("[$($userProfiles.Count)] inactive profiles were found.")
 
     foreach ($userProfile in $userProfiles) {
-        [IO.FileInfo[]]$outlookProfile = Get-ChildItem -Path "$($userProfile.ProfilePath)\AppData\Local\Microsoft\Outlook" | Where-Object Extension -in @('.ost', '*.nst')
+        [IO.FileInfo[]]$outlookProfile = Get-ChildItem -Path "$($userProfile.ProfilePath)\AppData\Local\Microsoft\Outlook" | & { process { if ($_.Extension -in @('.ost', '.nst')) { return $_ } } }
 
         if (-not $outlookProfile) {
+            $PSCmdlet.WriteVerbose("Skipping user profile [$($userProfile.Username)] becuase an outlook profile doesn't exist.")
             continue
         }
 
+        if ($CalculateProfileSize) {
+            $userProfile.CalculateProfileSize()
+        }
+
+        # Write the object to the console so the user can determine if they want to delete it or not based on other properties.
+        Write-Host -Object $(Out-String -InputObject $userProfile)
         if (-not $PSCmdlet.ShouldProcess($userProfile.Username)) {
             continue
         }
