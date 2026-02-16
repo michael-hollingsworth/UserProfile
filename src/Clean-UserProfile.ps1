@@ -52,14 +52,25 @@ function Clean-UserProfile {
         } catch {
             $PSCmdlet.WriteWarning("Failed to delete user profile [$($userProfile.Username)]. Attempting to delete manually.")
             # Remove everything manually
-            if (-not [String]::IsNullOrWhiteSpace($userProfile.ProfilePath)) {
-                Remove-Item -LiteralPath $userProfile.ProfilePath -Recurse -Force -ErrorAction Continue
+
+            [String[]]$profilePaths = @(
+                "Microsoft.PowerShell.Core\FileSystem::$($userProfile.ProfilePath)",
+                "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($userProfile.Sid)",
+                "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($userProfile.Sid)_Classes",
+                "Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\$($userProfile.Sid)",
+                "Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$($userProfile.Sid)",
+                "Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileService\References\$($userProfile.Sid)"
+            )
+
+            foreach ($path in $profilePaths) {
+                if ([String]::IsNullOrWhiteSpace($path)) {
+                    continue
+                }
+
+                if (Test-Path -LiteralPath $path) {
+                    Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Continue
+                }
             }
-            Remove-Item -LiteralPath "HKU:\$($userProfile.Sid)" -Recurse -Force -ErrorAction Continue
-            Remove-Item -LiteralPath "HKU:\$($userProfile.Sid)_Classes" -Recurse -Force -ErrorAction Continue
-            Remove-Item -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\$($userProfile.Sid)" -Recurse -Force -ErrorAction Continue
-            Remove-Item -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$($userProfile.Sid)" -Recurse -Force -ErrorAction Continue
-            Remove-Item -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileService\References\$($userProfile.Sid)" -Recurse -Force -ErrorAction Continue
         }
 
         if ($PassThru) {
