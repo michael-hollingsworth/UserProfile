@@ -26,55 +26,57 @@ function Clean-UserProfile {
         [Switch]$Force
     )
 
-    if ($Force -and (-not $PSBoundParameters.ContainsKey('Confirm'))) {
-        $ConfirmPreference = [System.Management.Automation.ConfirmImpact]::None
-    }
-
-    if ($PSCmdlet.ParameterSetName -ne 'InputObject') {
-        [HashTable]$splat = $PSBoundParameters
-        if ($splat.ContainsKey('PassThru')) {
-            $splat.Remove('PassThru')
+    begin {
+        if ($Force -and (-not $PSBoundParameters.ContainsKey('Confirm'))) {
+            $ConfirmPreference = [System.Management.Automation.ConfirmImpact]::None
         }
-        if ($splat.ContainsKey('Force')) {
-            $splat.Remove('Force')
-        }
+    } process {
+        if ($PSCmdlet.ParameterSetName -ne 'InputObject') {
+            [HashTable]$splat = $PSBoundParameters
+            if ($splat.ContainsKey('PassThru')) {
+                $splat.Remove('PassThru')
+            }
+            if ($splat.ContainsKey('Force')) {
+                $splat.Remove('Force')
+            }
 
-        [UserProfile[]]$InputObject = Get-UserProfile @splat
-    }
-
-    foreach ($userProfile in $InputObject) {
-        if (-not $PSCmdlet.ShouldProcess($userProfile.Username)) {
-            continue
+            [UserProfile[]]$InputObject = Get-UserProfile @splat
         }
 
-        try {
-            $userProfile.Delete()
-        } catch {
-            $PSCmdlet.WriteWarning("Failed to delete user profile [$($userProfile.Username)]. Attempting to delete manually.")
-            # Remove everything manually
+        foreach ($userProfile in $InputObject) {
+            if (-not $PSCmdlet.ShouldProcess($userProfile.Username)) {
+                continue
+            }
 
-            [String[]]$profilePaths = @(
-                "Microsoft.PowerShell.Core\FileSystem::$($userProfile.ProfilePath)",
-                "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($userProfile.Sid)",
-                "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($userProfile.Sid)_Classes",
-                "Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\$($userProfile.Sid)",
-                "Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$($userProfile.Sid)",
-                "Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileService\References\$($userProfile.Sid)"
-            )
+            try {
+                $userProfile.Delete()
+            } catch {
+                $PSCmdlet.WriteWarning("Failed to delete user profile [$($userProfile.Username)]. Attempting to delete manually.")
+                # Remove everything manually
 
-            foreach ($path in $profilePaths) {
-                if ([String]::IsNullOrWhiteSpace($path)) {
-                    continue
-                }
+                [String[]]$profilePaths = @(
+                    "Microsoft.PowerShell.Core\FileSystem::$($userProfile.ProfilePath)",
+                    "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($userProfile.Sid)",
+                    "Microsoft.PowerShell.Core\Registry::HKEY_USERS\$($userProfile.Sid)_Classes",
+                    "Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\$($userProfile.Sid)",
+                    "Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$($userProfile.Sid)",
+                    "Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileService\References\$($userProfile.Sid)"
+                )
 
-                if (Test-Path -LiteralPath $path) {
-                    Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Continue
+                foreach ($path in $profilePaths) {
+                    if ([String]::IsNullOrWhiteSpace($path)) {
+                        continue
+                    }
+
+                    if (Test-Path -LiteralPath $path) {
+                        Remove-Item -LiteralPath $path -Recurse -Force -ErrorAction Continue
+                    }
                 }
             }
-        }
 
-        if ($PassThru) {
-            $PSCmdlet.WriteObject($userProfile)
+            if ($PassThru) {
+                $PSCmdlet.WriteObject($userProfile)
+            }
         }
     }
 }
